@@ -1,0 +1,21 @@
+import { View, Text, ScrollView, FlatList } from 'react-native'
+import React from 'react'
+import data from '../assets/data/library.json'
+import Track from './Track'
+import className from 'twrnc'
+
+const Tracks = () => {
+  return (
+    <View style={className`flex-1`}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <FlatList data={data}
+          renderItem={({ item }) => (
+            <Track />
+          )}
+        />
+      </ScrollView>
+    </View>
+  )
+}
+
+export default Tracks

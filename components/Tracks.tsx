@@ -10,7 +10,7 @@ const Tracks = () => {
       <ScrollView showsVerticalScrollIndicator={false}>
         <FlatList data={data}
           renderItem={({ item }) => (
-            <Track />
+            <Track image={item.artwork} title={item.title} name={item.artist}/>
           )}
         />
       </ScrollView>

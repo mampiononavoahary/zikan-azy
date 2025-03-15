@@ -1,6 +1,6 @@
-// context/SoundContext.tsx
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { Audio } from 'expo-av';
+import * as Notifications from 'expo-notifications';
 
 interface Track {
   url: string;
@@ -38,6 +38,19 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     loadTracks();
   }, []);
 
+  // Mettre à jour la notification avec les informations de la piste en cours
+  const updateNotification = async (track: Track) => {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: track.title,
+        body: track.artist,
+        sound: false,
+        data: { action: 'play' }, // Données supplémentaires pour gérer les actions
+      },
+      trigger: null, // Notification immédiate
+    });
+  };
+
   const play = async (track: Track) => {
     if (soundRef.current) {
       await soundRef.current.stopAsync();
@@ -52,6 +65,9 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setIsPlaying(true);
       setCurrentTrack(track);
       setCurrentTrackIndex(tracks.findIndex((t) => t.url === track.url));
+
+      // Mettre à jour la notification
+      await updateNotification(track);
     } catch (error) {
       console.error("Erreur lors du chargement de la musique :", error);
     }
@@ -91,6 +107,24 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     play(prevTrack);
   };
 
+  // Écouter les actions de notification
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const action = response.notification.request.content.data.action;
+
+      if (action === 'play') {
+        togglePlayStop();
+      } else if (action === 'next') {
+        nextTrack();
+      } else if (action === 'previous') {
+        previousTrack();
+      }
+    });
+
+    return () => subscription.remove(); // Nettoyer l'écouteur
+  }, [isPlaying, currentTrack]);
+
+  // Nettoyer le son lors du démontage du composant
   useEffect(() => {
     return () => {
       if (soundRef.current) {

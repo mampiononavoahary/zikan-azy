@@ -12,11 +12,13 @@ interface Track {
 interface SoundContextType {
   isPlaying: boolean;
   currentTrack: Track | null;
+  tracks: Track[]; // Exposer la liste des pistes
   play: (track: Track) => Promise<void>;
   pause: () => Promise<void>;
   togglePlayStop: () => Promise<void>;
   nextTrack: () => void;
   previousTrack: () => void;
+  removeTrack: (track: Track) => void; // Nouvelle fonction pour supprimer une piste
 }
 
 const SoundContext = createContext<SoundContextType | null>(null);
@@ -107,6 +109,23 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     play(prevTrack);
   };
 
+  // Fonction pour supprimer une piste
+  const removeTrack = (track: Track) => {
+    const updatedTracks = tracks.filter((t) => t.url !== track.url);
+    setTracks(updatedTracks);
+
+    // Si la piste supprimée est en cours de lecture, arrêter la lecture
+    if (currentTrack && currentTrack.url === track.url) {
+      if (soundRef.current) {
+        soundRef.current.stopAsync();
+        soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
+      setCurrentTrack(null);
+      setIsPlaying(false);
+    }
+  };
+
   // Écouter les actions de notification
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
@@ -134,7 +153,19 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   return (
-    <SoundContext.Provider value={{ isPlaying, currentTrack, play, pause, togglePlayStop, nextTrack, previousTrack }}>
+    <SoundContext.Provider
+      value={{
+        isPlaying,
+        currentTrack,
+        tracks, // Exposer la liste des pistes
+        play,
+        pause,
+        togglePlayStop,
+        nextTrack,
+        previousTrack,
+        removeTrack, // Exposer la fonction de suppression
+      }}
+    >
       {children}
     </SoundContext.Provider>
   );

@@ -7,7 +7,7 @@ import { useSound } from '@/context/SoundContext';
 
 const Tracks = () => {
   const [popupVisible, setPopupVisible] = useState(false);
-  const { play } = useSound();
+  const { play, removeTrack, tracks } = useSound(); // Récupérer removeTrack et tracks
 
   const togglePopup = (item) => {
     setPopupVisible(!popupVisible);
@@ -19,7 +19,7 @@ const Tracks = () => {
       <View style={{ flex: 1 }}>
         <ScrollView showsVerticalScrollIndicator={false}>
           <FlatList
-            data={data} // Utilisez directement le fichier JSON
+            data={tracks} // Utiliser la liste des pistes du contexte
             keyExtractor={(item) => item.url}
             renderItem={({ item }) => (
               <Track
@@ -27,14 +27,13 @@ const Tracks = () => {
                 image={{ uri: item.artwork }}
                 title={item.title}
                 name={item.artist}
+                onDelete={() => removeTrack(item)} // Passer la fonction de suppression
               />
             )}
           />
         </ScrollView>
       </View>
-      {popupVisible && (
-        <MusicScreen onpress={() => setPopupVisible(false)} />
-      )}
+      {popupVisible && <MusicScreen onpress={() => setPopupVisible(false)} />}
     </>
   );
 };

@@ -1,29 +1,25 @@
-// Tracks.tsx
 import React, { useState } from 'react';
 import { View, ScrollView, FlatList } from 'react-native';
 import Track from './Track';
-import className from 'twrnc';
-import data from '../assets/data/library.json';
+import data from '../assets/data/library.json'; // Importez le fichier JSON
 import MusicScreen from './MusicScreen';
-import { useSound } from '../context/SoundContext';
+import { useSound } from '@/context/SoundContext';
 
-const Tracks: React.FC = () => {
+const Tracks = () => {
   const [popupVisible, setPopupVisible] = useState(false);
-  const [selected, setSelected] = useState<{ url: string; artwork: string; title: string; artist: string } | null>(null);
   const { play } = useSound();
 
-  const togglePopup = (item: { url: string; artwork: string; title: string; artist: string }) => {
+  const togglePopup = (item) => {
     setPopupVisible(!popupVisible);
-    setSelected(item);
     play(item); // Jouer la musique sélectionnée
   };
 
   return (
     <>
-      <View style={className`flex-1`}>
+      <View style={{ flex: 1 }}>
         <ScrollView showsVerticalScrollIndicator={false}>
           <FlatList
-            data={data}
+            data={data} // Utilisez directement le fichier JSON
             keyExtractor={(item) => item.url}
             renderItem={({ item }) => (
               <Track
@@ -36,8 +32,8 @@ const Tracks: React.FC = () => {
           />
         </ScrollView>
       </View>
-      {popupVisible && selected && (
-        <MusicScreen onpress={() => setPopupVisible(false)} track={selected} />
+      {popupVisible && (
+        <MusicScreen onpress={() => setPopupVisible(false)} />
       )}
     </>
   );

@@ -1,34 +1,46 @@
-import { View, Text, ScrollView, FlatList } from 'react-native'
-import React, { useState } from 'react'
-import data from '../assets/data/library.json'
-import Track from './Track'
-import className from 'twrnc'
-import MusicScreen from './MusicScreen'
+// Tracks.tsx
+import React, { useState } from 'react';
+import { View, ScrollView, FlatList } from 'react-native';
+import Track from './Track';
+import className from 'twrnc';
+import data from '../assets/data/library.json';
+import MusicScreen from './MusicScreen';
+import { useSound } from '../context/SoundContext';
 
-const Tracks = () => {
-  const [popupVisible,setPopupVisible] = useState(false);
-  const [MusicScreenHide,setMusicScreenHide] = useState(true);
-  const toggleHide = ()=>{
-    setPopupVisible(!popupVisible)
+const Tracks: React.FC = () => {
+  const [popupVisible, setPopupVisible] = useState(false);
+  const [selected, setSelected] = useState<{ url: string; artwork: string; title: string; artist: string } | null>(null);
+  const { play } = useSound();
 
-  }
-  const togglePopup = ()=>{
-    setPopupVisible(!popupVisible)
-  }
+  const togglePopup = (item: { url: string; artwork: string; title: string; artist: string }) => {
+    setPopupVisible(!popupVisible);
+    setSelected(item);
+    play(item); // Jouer la musique sélectionnée
+  };
+
   return (
     <>
-    <View style={className`flex-1`}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <FlatList data={data}
-          renderItem={({ item }) => (
-            <Track onpresse={togglePopup} image={item.artwork} title={item.title} name={item.artist}/>
-          )}
-        />
-      </ScrollView>
-    </View>
-    {popupVisible && (<MusicScreen onpress={toggleHide}/>)}
-</>
-  )
-}
+      <View style={className`flex-1`}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <FlatList
+            data={data}
+            keyExtractor={(item) => item.url}
+            renderItem={({ item }) => (
+              <Track
+                onpresse={() => togglePopup(item)}
+                image={{ uri: item.artwork }}
+                title={item.title}
+                name={item.artist}
+              />
+            )}
+          />
+        </ScrollView>
+      </View>
+      {popupVisible && selected && (
+        <MusicScreen onpress={() => setPopupVisible(false)} track={selected} />
+      )}
+    </>
+  );
+};
 
-export default Tracks
+export default Tracks;

@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { View, ScrollView, FlatList } from 'react-native';
 import Track from './Track';
-import data from '../assets/data/library.json'; // Importez le fichier JSON
 import MusicScreen from './MusicScreen';
 import { useSound } from '@/context/SoundContext';
+import { unknownTrackImageUri } from '@/constants/images';
 
 const Tracks = () => {
   const [popupVisible, setPopupVisible] = useState(false);
-  const { play, removeTrack, tracks } = useSound(); // Récupérer removeTrack et tracks
+  const { play, removeTrack, tracks, isPlaying, currentTrack } = useSound(); // Récupérer isPlaying et currentTrack
 
   const togglePopup = (item) => {
     setPopupVisible(!popupVisible);
@@ -24,10 +24,11 @@ const Tracks = () => {
             renderItem={({ item }) => (
               <Track
                 onpresse={() => togglePopup(item)}
-                image={{ uri: item.artwork }}
+                image={item.artwork ? { uri: item.artwork } : unknownTrackImageUri}
                 title={item.title}
                 name={item.artist}
                 onDelete={() => removeTrack(item)} // Passer la fonction de suppression
+                isPlaying={isPlaying && currentTrack?.url === item.url} // Passer l'état de lecture
               />
             )}
           />

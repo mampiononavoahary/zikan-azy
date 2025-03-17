@@ -1,6 +1,7 @@
 import { View, Text } from 'react-native';
 import React from 'react';
 import { Tabs } from 'expo-router';
+import { MaterialIcons } from '@expo/vector-icons';
 import { Heart, Music, ListMusic, Users } from 'lucide-react-native';
 import className from 'twrnc';
 
@@ -16,6 +17,7 @@ const Layout = () => {
           headerTintColor: 'white',
           headerTitleStyle: {
             fontSize: 40,
+            fontFamily:'Raleway',
             color: 'white',
           },
           tabBarStyle: {
@@ -35,7 +37,7 @@ const Layout = () => {
         <Tabs.Screen
           name="favorites"
           options={{
-            tabBarIcon: () => <Heart size={25} color="white" />,
+            tabBarIcon: () => <MaterialIcons name="favorite" size={25} color="white" />,
             headerTitle: 'Favorites',
             tabBarLabel: 'Favorites',
           }}
@@ -43,7 +45,7 @@ const Layout = () => {
         <Tabs.Screen
           name="playlists"
           options={{
-            tabBarIcon: () => <ListMusic size={25} color="white" />,
+            tabBarIcon: () => <MaterialIcons name="music-note" size={25} color="white" />,
             headerTitle: 'Playlists',
             tabBarLabel: 'Playlists',
           }}
@@ -51,7 +53,7 @@ const Layout = () => {
         <Tabs.Screen
           name="index"
           options={{
-            tabBarIcon: () => <Music size={25} color="white" />,
+            tabBarIcon: () => <MaterialIcons name="queue-music" size={25} color="white" />,
             headerTitle: 'Songs',
             tabBarLabel: 'Songs',
           }}
@@ -59,7 +61,7 @@ const Layout = () => {
         <Tabs.Screen
           name="artists"
           options={{
-            tabBarIcon: () => <Users size={25} color="white" />,
+            tabBarIcon: () => <MaterialIcons name="people" size={25} color="white" />,
             headerTitle: 'Artists',
             tabBarLabel: 'Artists',
           }}

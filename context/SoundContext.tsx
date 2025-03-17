@@ -12,13 +12,13 @@ interface Track {
 interface SoundContextType {
   isPlaying: boolean;
   currentTrack: Track | null;
-  tracks: Track[]; // Exposer la liste des pistes
+  tracks: Track[];
   play: (track: Track) => Promise<void>;
   pause: () => Promise<void>;
   togglePlayStop: () => Promise<void>;
   nextTrack: () => void;
   previousTrack: () => void;
-  removeTrack: (track: Track) => void; // Nouvelle fonction pour supprimer une piste
+  removeTrack: (track: Track) => void;
 }
 
 const SoundContext = createContext<SoundContextType | null>(null);
@@ -40,18 +40,32 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     loadTracks();
   }, []);
 
-  // Mettre à jour la notification avec les informations de la piste en cours
-  const updateNotification = async (track: Track) => {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: track.title,
-        body: track.artist,
-        sound: false,
-        data: { action: 'play' }, // Données supplémentaires pour gérer les actions
-      },
-      trigger: null, // Notification immédiate
-    });
-  };
+  // Surveiller l'état de lecture
+  useEffect(() => {
+    const updatePlaybackStatus = async (status: Audio.PlaybackStatus) => {
+      if (status.isLoaded) {
+        if (status.didJustFinish) {
+          // La musique est terminée
+          setIsPlaying(false);
+          setCurrentTrack(null);
+          if (soundRef.current) {
+            await soundRef.current.unloadAsync();
+            soundRef.current = null;
+          }
+        }
+      }
+    };
+
+    if (soundRef.current) {
+      soundRef.current.setOnPlaybackStatusUpdate(updatePlaybackStatus);
+    }
+
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.setOnPlaybackStatusUpdate(null);
+      }
+    };
+  }, [soundRef.current]);
 
   const play = async (track: Track) => {
     if (soundRef.current) {
@@ -69,7 +83,15 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setCurrentTrackIndex(tracks.findIndex((t) => t.url === track.url));
 
       // Mettre à jour la notification
-      await updateNotification(track);
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: track.title,
+          body: track.artist,
+          sound: false,
+          data: { action: 'play' },
+        },
+        trigger: null,
+      });
     } catch (error) {
       console.error("Erreur lors du chargement de la musique :", error);
     }
@@ -109,7 +131,6 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     play(prevTrack);
   };
 
-  // Fonction pour supprimer une piste
   const removeTrack = (track: Track) => {
     const updatedTracks = tracks.filter((t) => t.url !== track.url);
     setTracks(updatedTracks);
@@ -126,23 +147,6 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // Écouter les actions de notification
-  useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const action = response.notification.request.content.data.action;
-
-      if (action === 'play') {
-        togglePlayStop();
-      } else if (action === 'next') {
-        nextTrack();
-      } else if (action === 'previous') {
-        previousTrack();
-      }
-    });
-
-    return () => subscription.remove(); // Nettoyer l'écouteur
-  }, [isPlaying, currentTrack]);
-
   // Nettoyer le son lors du démontage du composant
   useEffect(() => {
     return () => {
@@ -157,13 +161,13 @@ export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       value={{
         isPlaying,
         currentTrack,
-        tracks, // Exposer la liste des pistes
+        tracks,
         play,
         pause,
         togglePlayStop,
         nextTrack,
         previousTrack,
-        removeTrack, // Exposer la fonction de suppression
+        removeTrack,
       }}
     >
       {children}

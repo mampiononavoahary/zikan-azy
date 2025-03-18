@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, ScrollView, FlatList } from 'react-native';
+import { View, FlatList } from 'react-native';
 import Track from './Track';
 import MusicScreen from './MusicScreen';
 import { useSound } from '@/context/SoundContext';
@@ -7,32 +7,31 @@ import { unknownTrackImageUri } from '@/constants/images';
 
 const Tracks = () => {
   const [popupVisible, setPopupVisible] = useState(false);
-  const { play, removeTrack, tracks, isPlaying, currentTrack } = useSound(); // Récupérer isPlaying et currentTrack
+  const { playTrack, tracks, isPlaying, currentTrack } = useSound(); 
 
   const togglePopup = (item) => {
     setPopupVisible(!popupVisible);
-    play(item); // Jouer la musique sélectionnée
+    playTrack(item);
   };
 
   return (
     <>
       <View style={{ flex: 1 }}>
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <FlatList
-            data={tracks} // Utiliser la liste des pistes du contexte
-            keyExtractor={(item) => item.url}
-            renderItem={({ item }) => (
-              <Track
-                onpresse={() => togglePopup(item)}
-                image={item.artwork ? { uri: item.artwork } : unknownTrackImageUri}
-                title={item.title}
-                name={item.artist}
-                onDelete={() => removeTrack(item)} // Passer la fonction de suppression
-                isPlaying={isPlaying && currentTrack?.url === item.url} // Passer l'état de lecture
-              />
-            )}
-          />
-        </ScrollView>
+        {/* Suppression de ScrollView et FlatList gère le scroll */}
+        <FlatList
+          data={tracks}
+          keyExtractor={(item) => item.path}
+          renderItem={({ item }) => (
+            <Track
+              onpresse={() => togglePopup(item)}
+              image={item.artwork ? { uri: item.artwork } : unknownTrackImageUri}
+              title={item.name}  
+              name={item.artist}  
+              onDelete={() => removeTrack(item)}
+              isPlaying={isPlaying && currentTrack?.path === item.path}
+            />
+          )}
+        />
       </View>
       {popupVisible && <MusicScreen onpress={() => setPopupVisible(false)} />}
     </>
@@ -40,3 +39,4 @@ const Tracks = () => {
 };
 
 export default Tracks;
+

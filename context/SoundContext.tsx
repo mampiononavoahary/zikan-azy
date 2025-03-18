@@ -1,173 +1,142 @@
-import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-import { Audio } from 'expo-av';
-import * as Notifications from 'expo-notifications';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { Audio } from "expo-av";
+import useLocalMusic from "@/components/getMusic";
 
-interface Track {
-  url: string;
-  artwork: string;
-  title: string;
+interface AudioFile {
+  name: string;
+  path: string;
   artist: string;
+  artwork: string | null;
 }
 
 interface SoundContextType {
+  tracks: AudioFile[];
+  currentTrack: AudioFile | null;
   isPlaying: boolean;
-  currentTrack: Track | null;
-  tracks: Track[];
-  play: (track: Track) => Promise<void>;
-  pause: () => Promise<void>;
+  playTrack: (track?: AudioFile) => Promise<void>;
+  pauseTrack: () => Promise<void>;
+  stopTrack: () => Promise<void>;
   togglePlayStop: () => Promise<void>;
   nextTrack: () => void;
   previousTrack: () => void;
-  removeTrack: (track: Track) => void;
 }
 
-const SoundContext = createContext<SoundContextType | null>(null);
+const SoundContext = createContext<SoundContextType | undefined>(undefined);
 
 export const SoundProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const tracks = useLocalMusic();
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [currentTrack, setCurrentTrack] = useState<AudioFile | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
-  const [tracks, setTracks] = useState<Track[]>([]);
-  const [currentTrackIndex, setCurrentTrackIndex] = useState<number>(-1);
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const [trackIndex, setTrackIndex] = useState<number>(0);
+  const [position, setPosition] = useState(0);  // Position de la lecture
 
-  // Charger les pistes depuis le fichier JSON
   useEffect(() => {
-    const loadTracks = async () => {
-      const loadedTracks = require('../assets/data/library.json'); // Importez le fichier JSON
-      setTracks(loadedTracks);
-    };
-
-    loadTracks();
-  }, []);
-
-  // Surveiller l'état de lecture
-  useEffect(() => {
-    const updatePlaybackStatus = async (status: Audio.PlaybackStatus) => {
-      if (status.isLoaded) {
-        if (status.didJustFinish) {
-          // La musique est terminée
-          setIsPlaying(false);
-          setCurrentTrack(null);
-          if (soundRef.current) {
-            await soundRef.current.unloadAsync();
-            soundRef.current = null;
-          }
-        }
-      }
-    };
-
-    if (soundRef.current) {
-      soundRef.current.setOnPlaybackStatusUpdate(updatePlaybackStatus);
-    }
-
     return () => {
-      if (soundRef.current) {
-        soundRef.current.setOnPlaybackStatusUpdate(null);
+      if (sound) {
+        sound.unloadAsync();
       }
     };
-  }, [soundRef.current]);
+  }, [sound]);
 
-  const play = async (track: Track) => {
-    if (soundRef.current) {
-      await soundRef.current.stopAsync();
-      await soundRef.current.unloadAsync();
-      soundRef.current = null;
-    }
-
+  const playTrack = async (track?: AudioFile) => {
     try {
-      const { sound: newSound } = await Audio.Sound.createAsync({ uri: track.url });
-      soundRef.current = newSound;
-      await newSound.playAsync();
-      setIsPlaying(true);
-      setCurrentTrack(track);
-      setCurrentTrackIndex(tracks.findIndex((t) => t.url === track.url));
+      if (sound) {
+        await sound.unloadAsync();
+      }
 
-      // Mettre à jour la notification
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: track.title,
-          body: track.artist,
-          sound: false,
-          data: { action: 'play' },
-        },
-        trigger: null,
+      let selectedTrack = track || tracks[trackIndex];
+
+      if (!selectedTrack) {
+        console.warn("Aucune piste à lire !");
+        return;
+      }
+
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: selectedTrack.path },
+        { shouldPlay: true }
+      );
+
+      setSound(newSound);
+      setCurrentTrack(selectedTrack);
+      setIsPlaying(true);
+
+      newSound.setOnPlaybackStatusUpdate(async (status) => {
+        if (!status.isLoaded) return;
+        if (status.didJustFinish) {
+          nextTrack(); // Passer automatiquement à la piste suivante
+        } else {
+          setPosition(status.positionMillis);  // Mettre à jour la position pendant la lecture
+        }
       });
     } catch (error) {
-      console.error("Erreur lors du chargement de la musique :", error);
+      console.error("Erreur lors de la lecture du son :", error);
     }
   };
 
-  const pause = async () => {
-    if (soundRef.current) {
-      await soundRef.current.pauseAsync();
+  const pauseTrack = async () => {
+    if (sound) {
+      const status = await sound.getStatusAsync();
+      setPosition(status.positionMillis);  // Sauvegarder la position actuelle
+      await sound.pauseAsync();
       setIsPlaying(false);
+    }
+  };
+
+  const stopTrack = async () => {
+    if (sound) {
+      await sound.stopAsync();
+      setIsPlaying(false);
+      setCurrentTrack(null);
+      setPosition(0);  // Réinitialiser la position
     }
   };
 
   const togglePlayStop = async () => {
-    if (soundRef.current) {
-      if (isPlaying) {
-        await pause();
+    if (isPlaying) {
+      await pauseTrack();  // Mettre en pause si la lecture est en cours
+    } else {
+      if (sound) {
+        await sound.playFromPositionAsync(position);  // Reprendre à la position où on a arrêté
       } else {
-        await soundRef.current.playAsync();
-        setIsPlaying(true);
+        await playTrack();  // Si aucun son n'est en lecture, commencer une nouvelle lecture
       }
+      setIsPlaying(true);
     }
   };
 
   const nextTrack = () => {
-    if (tracks.length === 0 || currentTrackIndex === -1) return;
+    if (tracks.length === 0) return;
 
-    const nextIndex = (currentTrackIndex + 1) % tracks.length;
-    const nextTrack = tracks[nextIndex];
-    play(nextTrack);
+    let newIndex = (trackIndex + 1) % tracks.length;
+    setTrackIndex(newIndex);
+    playTrack(tracks[newIndex]);
   };
 
   const previousTrack = () => {
-    if (tracks.length === 0 || currentTrackIndex === -1) return;
+    if (tracks.length === 0) return;
 
-    const prevIndex = (currentTrackIndex - 1 + tracks.length) % tracks.length;
-    const prevTrack = tracks[prevIndex];
-    play(prevTrack);
+    let newIndex = trackIndex - 1 < 0 ? tracks.length - 1 : trackIndex - 1;
+    setTrackIndex(newIndex);
+    playTrack(tracks[newIndex]);
   };
 
-  const removeTrack = (track: Track) => {
-    const updatedTracks = tracks.filter((t) => t.url !== track.url);
-    setTracks(updatedTracks);
-
-    // Si la piste supprimée est en cours de lecture, arrêter la lecture
-    if (currentTrack && currentTrack.url === track.url) {
-      if (soundRef.current) {
-        soundRef.current.stopAsync();
-        soundRef.current.unloadAsync();
-        soundRef.current = null;
-      }
-      setCurrentTrack(null);
-      setIsPlaying(false);
-    }
-  };
-
-  // Nettoyer le son lors du démontage du composant
-  useEffect(() => {
-    return () => {
-      if (soundRef.current) {
-        soundRef.current.unloadAsync();
-      }
-    };
-  }, []);
+  if (tracks === null) {
+    return <Text>Permission refusée. Impossible de charger la musique.</Text>;
+  }
 
   return (
     <SoundContext.Provider
       value={{
-        isPlaying,
-        currentTrack,
         tracks,
-        play,
-        pause,
+        currentTrack,
+        isPlaying,
+        playTrack,
+        pauseTrack,
+        stopTrack,
         togglePlayStop,
         nextTrack,
         previousTrack,
-        removeTrack,
       }}
     >
       {children}

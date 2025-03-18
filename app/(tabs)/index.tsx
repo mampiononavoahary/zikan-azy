@@ -6,15 +6,7 @@ import PlayAndShuffle from '@/components/PlayAndShuffle';
 import Tracks from '@/components/Tracks';
 import { SoundProvider } from '@/context/SoundContext';
 import * as Notifications from 'expo-notifications';
-
-// Configurer les notifications pour afficher les contrôles de lecture
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+import { Platform } from 'react-native';
 
 const Index = () => {
   useEffect(() => {
@@ -28,22 +20,32 @@ const Index = () => {
 
     requestNotificationPermission();
 
+    // Configuration du canal de notification pour Android
+    if (Platform.OS === 'android') {
+      Notifications.setNotificationChannelAsync('music-channel', {
+        name: 'Music Controls',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+      });
+    }
+
     // Écouter les actions de notification
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const action = response.notification.request.content.data.action;
 
       if (action === 'play') {
         console.log('Play action');
-        // Jouer la musique
+        // Code pour jouer la musique
       } else if (action === 'pause') {
         console.log('Pause action');
-        // Mettre en pause la musique
+        // Code pour mettre en pause la musique
       } else if (action === 'next') {
         console.log('Next action');
-        // Passer à la piste suivante
+        // Code pour passer à la piste suivante
       } else if (action === 'previous') {
         console.log('Previous action');
-        // Revenir à la piste précédente
+        // Code pour revenir à la piste précédente
       }
     });
 
@@ -62,3 +64,4 @@ const Index = () => {
 };
 
 export default Index;
+

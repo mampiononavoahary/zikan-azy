@@ -6,7 +6,7 @@ interface AudioFile {
   name: string;
   path: string;
   artist: string;
-  artwork: string;
+  artwork: string | null;
 }
 
 const useLocalMusic = () => {
@@ -15,36 +15,42 @@ const useLocalMusic = () => {
 
   useEffect(() => {
     (async () => {
+      console.log("🔄 Demande de permission pour accéder aux fichiers média...");
       const { status } = await MediaLibrary.requestPermissionsAsync();
 
       if (status !== "granted") {
-        console.warn("❌ Permission refusée pour accéder aux fichiers médias.");
+        console.warn("❌ Permission refusée.");
         setHasPermission(false);
         return;
       }
 
       setHasPermission(true);
+      console.log("✅ Permission accordée !");
 
-      const media = await MediaLibrary.getAssetsAsync({
-        mediaType: "audio",
-        first: 50, // Nombre de fichiers à récupérer
+      let media = await MediaLibrary.getAssetsAsync({
+        mediaType: MediaLibrary.MediaType.audio,
+        first: 1000,
       });
 
-      if (media.assets.length > 0) {
-        const formattedTracks = media.assets.map(track => ({
-          name: track.filename,
-          path: track.uri,
-          artist: "Local File",
-          artwork: require("../assets/unknown_track.png"), // Image par défaut
-        }));
-
-        setMusicFiles(formattedTracks);
-        console.log("✅ Musiques récupérées :", formattedTracks);
+      if (media.assets.length === 0) {
+        console.warn("⚠️ Aucun fichier audio trouvé !");
+      } else {
+        console.log(`✅ ${media.assets.length} fichiers audio trouvés.`);
       }
+
+      const formattedTracks = media.assets.map((track) => ({
+        name: track.filename,
+        path: track.uri,
+        artist: "Local File",
+        artwork: null, // Pas de require() ici
+      }));
+
+      setMusicFiles(formattedTracks);
+      console.log("🎵 Musiques récupérées :", formattedTracks);
     })();
   }, []);
 
-  return hasPermission === false ? [] : musicFiles;
+  return hasPermission === false ? null : musicFiles;
 };
 
 export default useLocalMusic;
